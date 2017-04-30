@@ -1,0 +1,97 @@
+4.3 sol
+
+Movie.java
+
+
+import org.apache.hadoop.fs.Path; 
+import org.apache.hadoop.conf.*;
+import org.apache.hadoop.mapreduce.Job;
+import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
+import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
+import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat; 
+import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
+import org.apache.hadoop.io.*;
+public class Movie {
+	@SuppressWarnings("deprecation")
+	public static void main(String[] args) throws Exception {
+		Configuration conf = new Configuration();
+		
+		Job job = new Job(conf, "Movie");
+		job.setJarByClass(Movie.class);
+
+		job.setMapOutputKeyClass(Text.class);
+		job.setMapOutputValueClass(IntWritable.class);
+
+		job.setOutputKeyClass(Text.class);
+		job.setOutputValueClass(IntWritable.class);
+		
+		job.setMapperClass(MovieMap.class);
+		job.setReducerClass(MovieRed.class);
+		
+		job.setInputFormatClass(TextInputFormat.class);
+		job.setOutputFormatClass(TextOutputFormat.class);
+
+		FileInputFormat.addInputPath(job, new Path(args[0])); 
+		FileOutputFormat.setOutputPath(job,new Path(args[1]));
+		
+		/*
+		Path out=new Path(args[1]);
+		out.getFileSystem(conf).delete(out);
+		*/
+		
+		job.waitForCompletion(true);
+	}
+}
+
+MovieMap.java
+
+import java.io.IOException;
+
+import org.apache.hadoop.io.IntWritable;
+import org.apache.hadoop.io.LongWritable;
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapreduce.Mapper;
+
+
+
+public class MovieMap extends Mapper<LongWritable, Text, Text, IntWritable> {
+	
+	Text outkey = new Text();
+	IntWritable outValue = new IntWritable(1);
+	
+	public void map(LongWritable key, Text value, Context context) 
+			throws IOException, InterruptedException {
+		String[] str = value.toString().split("\t");
+		outkey.set(str[0]);
+			context.write(outkey, outValue);
+		}
+	}
+
+
+
+MovieRed.java
+
+
+
+
+
+import java.io.IOException;
+
+import org.apache.hadoop.io.IntWritable;
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapreduce.Reducer;
+
+public class MovieRed extends Reducer<Text, IntWritable, Text, IntWritable>
+{
+	IntWritable outValue = new IntWritable();
+	
+	public void reduce(Text key, Iterable<IntWritable> values,Context context) throws IOException, InterruptedException
+	{
+		int count = 0;
+		for (IntWritable value : values) {
+			count += value.get();
+		}
+		outValue.set(count);
+		context.write(key, outValue);
+	}
+}
